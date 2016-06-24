@@ -28,17 +28,16 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.MulticastSocket;
 import java.net.NetworkInterface;
-import java.net.SocketAddress;
 import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.util.Date;
 
 public class MainActivity extends Activity implements SurfaceHolder.Callback {
-    private UdpReceiverDecoderThread mRec = null;
     private static String TAG = "UDP";
     Handler handler;
     WifiManager wm;
     WifiManager.MulticastLock lock;
+    private UdpReceiverDecoderThread mRec = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -113,6 +112,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 
 
     private class UdpReceiverDecoderThread extends Thread {
+        final boolean isMulticast = true;
         int port;
         int nalu_search_state = 0;
         byte[] nalu_data;
@@ -122,8 +122,6 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         Handler h = null;
         DatagramSocket s = null;
         boolean stop = false;
-        final boolean isMulticast = false;
-
         private MediaCodec decoder = null;
         private MediaFormat format = null;
         private File file = null;
@@ -217,7 +215,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
                     s.receive(p);
                     t2= new Date().getTime();
                     parseDatagram(p.getData(), p.getLength());
-                    //writeToFile(p.getData(),p.getLength());
+                    writeToFile(p.getData(), p.getLength());
                     rcv_len +=p.getLength();
                     Log.i(TAG,"rcv len "+p.getLength()+" "+rcv_len/(t2-t1)*1000/1024+"KB/S "+ (isMulticast?"MC":"UDP"));
 
@@ -236,7 +234,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
             Log.e(TAG, "writeToFile" + data[0]  + data[1] + data[2] + data[3] + " --" + len);
             if(file==null)
             {
-                file = new File("/sdcard/h264.bin");
+                file = new File("/sdcard/h264rx.bin");
                 if(!file.exists())
                     try {
                         file.createNewFile();
