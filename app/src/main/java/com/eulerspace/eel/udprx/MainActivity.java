@@ -25,7 +25,10 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.MulticastSocket;
+import java.net.NetworkInterface;
+import java.net.SocketAddress;
 import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.util.Date;
@@ -119,7 +122,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         Handler h = null;
         DatagramSocket s = null;
         boolean stop = false;
-        boolean isMulticast = false;
+        final boolean isMulticast = false;
 
         private MediaCodec decoder = null;
         private MediaFormat format = null;
@@ -177,18 +180,23 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
                     String BROADCAST_IP = "239.10.0.0";
                     //IP协议多点广播地址范围:224.0.0.0---239.255.255.255,其中224.0.0.0为系统自用
                     InetAddress serverAddress = InetAddress.getByName(BROADCAST_IP);
-                    ((MulticastSocket) s).joinGroup(serverAddress);
+                    //((MulticastSocket) s).joinGroup(serverAddress);
+                    if(NetworkInterface.getByName("wlan0")==null)
+                        Log.e(TAG,"wlan0 is null");
+                    ((MulticastSocket) s).joinGroup(new InetSocketAddress(serverAddress,server_port) ,NetworkInterface.getByName("wlan0"));
                     //s.receive(p);
                     Log.i(TAG, "receive from mm socket");
                 } catch (Exception e) {
                     //// TODO: 2016-06-21
-                    Log.e(TAG, "HH mm Exception");
+
+                    Log.e(TAG, "HH mm Exception" +e.toString());
+
                 }
             } else {
                 try {
                     s = new DatagramSocket(server_port);
                     Log.i(TAG, "create Socket");
-                    s.setReuseAddress(true);
+                    //s.setReuseAddress(true);
                     //s.setSoTimeout(20000);
                 } catch (SocketException e) {
                     Log.e(TAG, e.getMessage());
@@ -277,14 +285,14 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         }
 
         private void feedDecoder(byte[] n, int len) {
-            Log.i(TAG, "feedDecoder " + len);
+            Log.i(TAG, "feedDecoder "+ n[0]  + n[1] + n[2] + n[3] + "  len =" + len);
             ByteBuffer[] inputBuffers = decoder.getInputBuffers();
             ByteBuffer[] outputBuffers = decoder.getOutputBuffers();
 
             int inputBufferIndex = decoder.dequeueInputBuffer(0);
             if (inputBufferIndex >= 0) {
                 // fill inputBuffers[inputBufferIndex] with valid data
-                Log.i(TAG, "in index:" + inputBufferIndex);
+                //Log.i(TAG, "in index:" + inputBufferIndex);
                 inputBuffers[inputBufferIndex].clear();
                 inputBuffers[inputBufferIndex].put(n);
                 decoder.queueInputBuffer(inputBufferIndex, 0, len, 0, 0);
@@ -292,12 +300,12 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 
             BufferInfo bi = new MediaCodec.BufferInfo();
             int outputBufferIndex = decoder.dequeueOutputBuffer(bi, 0);
-            Log.i(TAG, "out index1 :" + outputBufferIndex);
+            //Log.i(TAG, "out index1 :" + outputBufferIndex);
 
 
             while (outputBufferIndex >= 0) {
                 // outputBuffer is ready to be processed or rendered.
-                Log.i(TAG, "out index:" + outputBufferIndex);
+                //Log.i(TAG, "out index:" + outputBufferIndex);
                 decoder.releaseOutputBuffer(outputBufferIndex, true);
                 outputBufferIndex = decoder.dequeueOutputBuffer(bi, 0);
             }
@@ -317,9 +325,14 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 
         private void parseDatagram(byte[] p, int plen) {
             int i;
-            Log.e(TAG, "parseDatagram" + p[0]  + p[1] + p[2] + p[3] + " --" + plen);
+           // Log.e(TAG, "parseDatagram" + p[0]  + p[1] + p[2] + p[3] + " --" + plen);
             //Log.i(TAG, new String(p));
             if (true) {
+                if((p[0]==0 &&p[1]==0 &&p[2]==0 &&p[3]==1)
+                        ||(p[0]==0 &&p[1]==0 &&p[2]==1))
+                    ;
+                else
+                    Log.e(TAG,"header error , not nalu,maybe should drop");
                 feedDecoder(p,  plen);
                 return;
             }
