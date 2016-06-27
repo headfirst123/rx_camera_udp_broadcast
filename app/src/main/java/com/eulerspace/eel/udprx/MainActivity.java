@@ -34,10 +34,18 @@ import java.util.Date;
 
 public class MainActivity extends Activity implements SurfaceHolder.Callback {
     private static String TAG = "UDP";
+
+    static {
+
+        System.loadLibrary("JniTest");
+    }
+
     Handler handler;
     WifiManager wm;
     WifiManager.MulticastLock lock;
     private UdpReceiverDecoderThread mRec = null;
+
+    public native String getHello();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -64,12 +72,14 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 
             }
         };
+
     }
 
     protected void onPause() {
         super.onPause();
-        Log.i("UDP", "onpause");
+        Log.i("UDP", "on pause" + getHello());
 
+        //ViewRootImpl l;
         //finish();
 
     }
@@ -168,7 +178,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 
         public void run() {
             int server_port = this.port;
-            byte[] message = new byte[1024*64];
+            byte[] message = new byte[1024 * 64];
             setPriority(Thread.MAX_PRIORITY);
             DatagramPacket p = new DatagramPacket(message, message.length);
 
@@ -179,15 +189,15 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
                     //IP协议多点广播地址范围:224.0.0.0---239.255.255.255,其中224.0.0.0为系统自用
                     InetAddress serverAddress = InetAddress.getByName(BROADCAST_IP);
                     //((MulticastSocket) s).joinGroup(serverAddress);
-                    if(NetworkInterface.getByName("wlan0")==null)
-                        Log.e(TAG,"wlan0 is null");
-                    ((MulticastSocket) s).joinGroup(new InetSocketAddress(serverAddress,server_port) ,NetworkInterface.getByName("wlan0"));
+                    if (NetworkInterface.getByName("wlan0") == null)
+                        Log.e(TAG, "wlan0 is null");
+                    ((MulticastSocket) s).joinGroup(new InetSocketAddress(serverAddress, server_port), NetworkInterface.getByName("wlan0"));
                     //s.receive(p);
                     Log.i(TAG, "receive from mm socket");
                 } catch (Exception e) {
                     //// TODO: 2016-06-21
 
-                    Log.e(TAG, "HH mm Exception" +e.toString());
+                    Log.e(TAG, "HH mm Exception" + e.toString());
 
                 }
             } else {
@@ -204,20 +214,20 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
                     e.printStackTrace();
                 }
             }
-            Log.i(TAG,"begin rcv acquire ");
+            Log.i(TAG, "begin rcv acquire ");
             lock.acquire();
-            long t1= new Date().getTime();
-            long t2= new Date().getTime();
-            long rcv_len=0;
-            Log.i(TAG,"begin rcv  ");
+            long t1 = new Date().getTime();
+            long t2 = new Date().getTime();
+            long rcv_len = 0;
+            Log.i(TAG, "begin rcv  ");
             while (!Thread.interrupted() && s != null && !stop) {
                 try {
                     s.receive(p);
-                    t2= new Date().getTime();
+                    t2 = new Date().getTime();
                     parseDatagram(p.getData(), p.getLength());
                     writeToFile(p.getData(), p.getLength());
-                    rcv_len +=p.getLength();
-                    Log.i(TAG,"rcv len "+p.getLength()+" "+rcv_len/(t2-t1)*1000/1024+"KB/S "+ (isMulticast?"MC":"UDP"));
+                    rcv_len += p.getLength();
+                    Log.i(TAG, "rcv len " + p.getLength() + " " + rcv_len / (t2 - t1) * 1000 / 1024 + "KB/S " + (isMulticast ? "MC" : "UDP"));
 
                 } catch (IOException e) {
                     Log.e(TAG, "IOException");
@@ -230,12 +240,11 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 
         }
 
-        private void writeToFile(byte []data,int len){
-            Log.e(TAG, "writeToFile" + data[0]  + data[1] + data[2] + data[3] + " --" + len);
-            if(file==null)
-            {
+        private void writeToFile(byte[] data, int len) {
+            Log.e(TAG, "writeToFile" + data[0] + data[1] + data[2] + data[3] + " --" + len);
+            if (file == null) {
                 file = new File("/sdcard/h264rx.bin");
-                if(!file.exists())
+                if (!file.exists())
                     try {
                         file.createNewFile();
                     } catch (IOException e) {
@@ -245,19 +254,20 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
                     fos = new FileOutputStream(file);
                 } catch (FileNotFoundException e) {
                     e.printStackTrace();
-                    Log.e(TAG,"file open fail");
+                    Log.e(TAG, "file open fail");
                     return;
                 }
             }
             try {
-                fos.write(data,0,len);
+                fos.write(data, 0, len);
             } catch (IOException e) {
                 e.printStackTrace();
-                Log.e(TAG,"file write fail");
+                Log.e(TAG, "file write fail");
             }
 
 
         }
+
         private void releaseResource() {
             if (s != null) {
                 s.close();
@@ -272,7 +282,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
                 decoder.release();
                 decoder = null;
             }
-            if(fos!=null) {
+            if (fos != null) {
                 try {
                     fos.close();
                 } catch (IOException e) {
@@ -283,7 +293,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         }
 
         private void feedDecoder(byte[] n, int len) {
-            Log.i(TAG, "feedDecoder "+ n[0]  + n[1] + n[2] + n[3] + "  len =" + len);
+            Log.i(TAG, "feedDecoder " + n[0] + n[1] + n[2] + n[3] + "  len =" + len);
             ByteBuffer[] inputBuffers = decoder.getInputBuffers();
             ByteBuffer[] outputBuffers = decoder.getOutputBuffers();
 
@@ -323,18 +333,18 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 
         private void parseDatagram(byte[] p, int plen) {
             int i;
-           // Log.e(TAG, "parseDatagram" + p[0]  + p[1] + p[2] + p[3] + " --" + plen);
+            // Log.e(TAG, "parseDatagram" + p[0]  + p[1] + p[2] + p[3] + " --" + plen);
             //Log.i(TAG, new String(p));
             if (true) {
-                if((p[0]==0 &&p[1]==0 &&p[2]==0 &&p[3]==1)
-                        ||(p[0]==0 &&p[1]==0 &&p[2]==1))
+                if ((p[0] == 0 && p[1] == 0 && p[2] == 0 && p[3] == 1)
+                        || (p[0] == 0 && p[1] == 0 && p[2] == 1))
                     ;
                 else
-                    Log.e(TAG,"header error , not nalu,maybe should drop");
-                feedDecoder(p,  plen);
+                    Log.e(TAG, "header error , not nalu,maybe should drop");
+                feedDecoder(p, plen);
                 return;
             }
-            for (i = 0 ; i < plen; ++i) {
+            for (i = 0; i < plen; ++i) {
                 nalu_data[nalu_data_position++] = p[i];
                 if (nalu_data_position == NALU_MAXLEN - 1) {
                     Log.i("UDP", "Nalu overflow");
