@@ -222,17 +222,20 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
             long t1 = System.currentTimeMillis();
             long t2;//= System.currentTimeMillis();
             long t_data;//= System.currentTimeMillis();
+            long t_rcv;
             long rcv_len = 0;
             Log.i(TAG, "begin rcv  ");
             while (!Thread.interrupted() && s != null && !stop) {
                 try {
+                    t_rcv = System.currentTimeMillis();
                     s.receive(p);
                     t_data = System.currentTimeMillis();
                     parseDatagram(p.getData(), p.getLength());
                     writeToFile(p.getData(), p.getLength());
                     rcv_len += p.getLength();
                     t2 = System.currentTimeMillis();
-                    Log.i(TAG, "rcv (" + (t2 - t_data) + "ms) " + p.getLength() + " " + rcv_len / (t2 - t1) * 1000 / 1024 + "KB/S " + (isMulticast ? "MC" : "UDP"));
+                    Log.i(TAG, "rcv (" + (t_data - t_rcv) + "ms)-(" + (t2 - t_data) + "ms) " + p.getLength() +
+                            " " + rcv_len / (t2 - t1) * 1000 / 1024 + "KB/S " + (isMulticast ? "MC" : "UDP"));
 
                 } catch (IOException e) {
                     Log.e(TAG, "IOException");
@@ -246,7 +249,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         }
 
         private void writeToFile(byte[] data, int len) {
-            Log.e(TAG, "writeToFile" + data[0] + data[1] + data[2] + data[3] + " --" + len);
+            //Log.e(TAG, "writeToFile" + data[0] + data[1] + data[2] + data[3] + " --" + len);
             if (file == null) {
                 Log.e(TAG, "null file ,create");
                 file = new File("/sdcard/h264rx.bin");
@@ -300,7 +303,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         }
 
         private void feedDecoder(byte[] n, int len) {
-            Log.i(TAG, "feedDecoder " + n[0] + n[1] + n[2] + n[3] + "  len =" + len);
+            //Log.i(TAG, "feedDecoder " + n[0] + n[1] + n[2] + n[3] + "  len =" + len);
             ByteBuffer[] inputBuffers = decoder.getInputBuffers();
             ByteBuffer[] outputBuffers = decoder.getOutputBuffers();
 
