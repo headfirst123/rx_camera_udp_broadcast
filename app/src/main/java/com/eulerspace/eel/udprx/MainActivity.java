@@ -30,7 +30,6 @@ import java.net.MulticastSocket;
 import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.nio.ByteBuffer;
-import java.util.Date;
 
 public class MainActivity extends Activity implements SurfaceHolder.Callback {
     private static String TAG = "UDP";
@@ -72,7 +71,11 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 
             }
         };
+    }
 
+    @Override
+    protected void onUserLeaveHint() {
+        super.onUserLeaveHint();
     }
 
     protected void onPause() {
@@ -122,7 +125,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 
 
     private class UdpReceiverDecoderThread extends Thread {
-        final boolean isMulticast = true;
+        final boolean isMulticast = false;
         int port;
         int nalu_search_state = 0;
         byte[] nalu_data;
@@ -216,18 +219,20 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
             }
             Log.i(TAG, "begin rcv acquire ");
             lock.acquire();
-            long t1 = new Date().getTime();
-            long t2 = new Date().getTime();
+            long t1 = System.currentTimeMillis();
+            long t2;//= System.currentTimeMillis();
+            long t_data;//= System.currentTimeMillis();
             long rcv_len = 0;
             Log.i(TAG, "begin rcv  ");
             while (!Thread.interrupted() && s != null && !stop) {
                 try {
                     s.receive(p);
-                    t2 = new Date().getTime();
+                    t_data = System.currentTimeMillis();
                     parseDatagram(p.getData(), p.getLength());
                     writeToFile(p.getData(), p.getLength());
                     rcv_len += p.getLength();
-                    Log.i(TAG, "rcv len " + p.getLength() + " " + rcv_len / (t2 - t1) * 1000 / 1024 + "KB/S " + (isMulticast ? "MC" : "UDP"));
+                    t2 = System.currentTimeMillis();
+                    Log.i(TAG, "rcv (" + (t2 - t_data) + "ms) " + p.getLength() + " " + rcv_len / (t2 - t1) * 1000 / 1024 + "KB/S " + (isMulticast ? "MC" : "UDP"));
 
                 } catch (IOException e) {
                     Log.e(TAG, "IOException");
@@ -243,6 +248,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         private void writeToFile(byte[] data, int len) {
             Log.e(TAG, "writeToFile" + data[0] + data[1] + data[2] + data[3] + " --" + len);
             if (file == null) {
+                Log.e(TAG, "null file ,create");
                 file = new File("/sdcard/h264rx.bin");
                 if (!file.exists())
                     try {
@@ -259,6 +265,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
                 }
             }
             try {
+                if (fos != null)
                 fos.write(data, 0, len);
             } catch (IOException e) {
                 e.printStackTrace();
@@ -335,13 +342,13 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
             int i;
             // Log.e(TAG, "parseDatagram" + p[0]  + p[1] + p[2] + p[3] + " --" + plen);
             //Log.i(TAG, new String(p));
-            if (true) {
+            if (false) {
                 if ((p[0] == 0 && p[1] == 0 && p[2] == 0 && p[3] == 1)
                         || (p[0] == 0 && p[1] == 0 && p[2] == 1))
-                    ;
+                    feedDecoder(p, plen);
                 else
-                    Log.e(TAG, "header error , not nalu,maybe should drop");
-                feedDecoder(p, plen);
+                    Log.e(TAG, "header error header error , not nalu , maybe should drop");
+
                 return;
             }
             for (i = 0; i < plen; ++i) {
@@ -369,8 +376,8 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
                             nalu_data[1] = 0;
                             nalu_data[2] = 0;
                             nalu_data[3] = 1;
-                            //interpretNalu(nalu_data,nalu_data_position-4);
-                            interpretNalu(p, plen);
+                            interpretNalu(nalu_data, nalu_data_position - 4);
+                            //interpretNalu(p, plen);
                             nalu_data_position = 4;
                         }
                         nalu_search_state = 0;
